@@ -1,0 +1,234 @@
+{
+  "_type": "export",
+  "__export_format": 4,
+  "__export_date": "2026-01-31T00:00:00.000Z",
+  "__export_source": "insomnia.desktop.app:v2023.5.8",
+  "resources": [
+    {
+      "_id": "wrk_academic",
+      "_type": "workspace",
+      "name": "Academic Management API",
+      "description": "API backend pour la gestion académique multi-collèges",
+      "scope": "collection"
+    },
+    {
+      "_id": "env_base",
+      "_type": "environment",
+      "name": "Base Environment",
+      "data": {
+        "baseUrl": "http://localhost:4000",
+        "accessToken": "",
+        "refreshToken": "",
+        "collegeId": ""
+      },
+      "parentId": "wrk_academic"
+    },
+    {
+      "_id": "req_health",
+      "_type": "request",
+      "name": "Health Check",
+      "method": "GET",
+      "url": "{{ _.baseUrl }}/",
+      "description": "Vérifier que le serveur est en ligne",
+      "parentId": "fld_root"
+    },
+    {
+      "_id": "fld_auth",
+      "_type": "request_group",
+      "name": "Authentication",
+      "parentId": "wrk_academic"
+    },
+    {
+      "_id": "req_register_admin",
+      "_type": "request",
+      "name": "Register - ADMIN_GLOBAL",
+      "method": "POST",
+      "url": "{{ _.baseUrl }}/api/auth/register",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"email\": \"admin@academy.com\",\n  \"password\": \"password123\",\n  \"role\": \"ADMIN_GLOBAL\",\n  \"nom\": \"Admin\",\n  \"prenom\": \"Principal\"\n}"
+      },
+      "parentId": "fld_auth"
+    },
+    {
+      "_id": "req_register_college",
+      "_type": "request",
+      "name": "Register - ADMIN_COLLEGE",
+      "method": "POST",
+      "url": "{{ _.baseUrl }}/api/auth/register",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"email\": \"admin.college@academy.com\",\n  \"password\": \"password123\",\n  \"role\": \"ADMIN_COLLEGE\",\n  \"nom\": \"Dupont\",\n  \"prenom\": \"Marie\",\n  \"collegeId\": \"{{ _.collegeId }}\"\n}"
+      },
+      "parentId": "fld_auth"
+    },
+    {
+      "_id": "req_login",
+      "_type": "request",
+      "name": "Login",
+      "method": "POST",
+      "url": "{{ _.baseUrl }}/api/auth/login",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"email\": \"admin@academy.com\",\n  \"password\": \"password123\"\n}"
+      },
+      "parentId": "fld_auth"
+    },
+    {
+      "_id": "req_profile",
+      "_type": "request",
+      "name": "Get Profile",
+      "method": "GET",
+      "url": "{{ _.baseUrl }}/api/auth/me",
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.accessToken }}"
+      },
+      "parentId": "fld_auth"
+    },
+    {
+      "_id": "req_refresh",
+      "_type": "request",
+      "name": "Refresh Token",
+      "method": "POST",
+      "url": "{{ _.baseUrl }}/api/auth/refresh",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"refreshToken\": \"{{ _.refreshToken }}\"\n}"
+      },
+      "parentId": "fld_auth"
+    },
+    {
+      "_id": "req_change_password",
+      "_type": "request",
+      "name": "Change Password",
+      "method": "POST",
+      "url": "{{ _.baseUrl }}/api/auth/change-password",
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.accessToken }}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"oldPassword\": \"password123\",\n  \"newPassword\": \"newpassword456\"\n}"
+      },
+      "parentId": "fld_auth"
+    },
+    {
+      "_id": "fld_colleges",
+      "_type": "request_group",
+      "name": "Collèges",
+      "parentId": "wrk_academic"
+    },
+    {
+      "_id": "req_get_colleges",
+      "_type": "request",
+      "name": "Get All Collèges",
+      "method": "GET",
+      "url": "{{ _.baseUrl }}/api/colleges",
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.accessToken }}"
+      },
+      "parentId": "fld_colleges"
+    },
+    {
+      "_id": "req_get_college",
+      "_type": "request",
+      "name": "Get Collège by ID",
+      "method": "GET",
+      "url": "{{ _.baseUrl }}/api/colleges/{{ _.collegeId }}",
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.accessToken }}"
+      },
+      "parentId": "fld_colleges"
+    },
+    {
+      "_id": "req_create_college",
+      "_type": "request",
+      "name": "Create Collège",
+      "method": "POST",
+      "url": "{{ _.baseUrl }}/api/colleges",
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.accessToken }}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"nom\": \"Collège Einstein\",\n  \"adresse\": \"123 rue de la Science, 75001 Paris\",\n  \"siteWeb\": \"https://einstein.academy.com\"\n}"
+      },
+      "parentId": "fld_colleges"
+    },
+    {
+      "_id": "req_update_college",
+      "_type": "request",
+      "name": "Update Collège",
+      "method": "PUT",
+      "url": "{{ _.baseUrl }}/api/colleges/{{ _.collegeId }}",
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.accessToken }}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"nom\": \"Collège Einstein - Mise à jour\",\n  \"adresse\": \"456 avenue de la Recherche, 75002 Paris\",\n  \"siteWeb\": \"https://einstein-updated.academy.com\"\n}"
+      },
+      "parentId": "fld_colleges"
+    },
+    {
+      "_id": "req_delete_college",
+      "_type": "request",
+      "name": "Delete Collège",
+      "method": "DELETE",
+      "url": "{{ _.baseUrl }}/api/colleges/{{ _.collegeId }}",
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.accessToken }}"
+      },
+      "parentId": "fld_colleges"
+    }
+  ]
+}

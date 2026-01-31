@@ -1,0 +1,400 @@
+{
+  "info": {
+    "name": "Academic Management API",
+    "description": "API backend pour la gestion académique multi-collèges",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "version": "1.0.0"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{accessToken}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:4000",
+      "type": "string"
+    },
+    {
+      "key": "accessToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "refreshToken",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Health Check",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/",
+          "host": ["{{baseUrl}}"],
+          "path": [""]
+        },
+        "description": "Vérifier que le serveur est en ligne"
+      }
+    },
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Register - ADMIN_GLOBAL",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.environment.set('userId', jsonData.data.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@academy.com\",\n  \"password\": \"password123\",\n  \"role\": \"ADMIN_GLOBAL\",\n  \"nom\": \"Admin\",\n  \"prenom\": \"Principal\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "register"]
+            },
+            "description": "Créer un compte administrateur global"
+          }
+        },
+        {
+          "name": "Register - ADMIN_COLLEGE",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin.college@academy.com\",\n  \"password\": \"password123\",\n  \"role\": \"ADMIN_COLLEGE\",\n  \"nom\": \"Dupont\",\n  \"prenom\": \"Marie\",\n  \"collegeId\": \"{{collegeId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "register"]
+            },
+            "description": "Créer un compte administrateur de collège (nécessite un collegeId)"
+          }
+        },
+        {
+          "name": "Register - ENSEIGNANT",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"prof.martin@academy.com\",\n  \"password\": \"password123\",\n  \"role\": \"ENSEIGNANT\",\n  \"nom\": \"Martin\",\n  \"prenom\": \"Jean\",\n  \"telephone\": \"+33612345678\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "register"]
+            },
+            "description": "Créer un compte enseignant"
+          }
+        },
+        {
+          "name": "Register - ETUDIANT",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"etudiant@academy.com\",\n  \"password\": \"password123\",\n  \"role\": \"ETUDIANT\",\n  \"nom\": \"Durand\",\n  \"prenom\": \"Sophie\",\n  \"telephone\": \"+33612345678\",\n  \"anneeEntree\": 2024\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "register"]
+            },
+            "description": "Créer un compte étudiant"
+          }
+        },
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.collectionVariables.set('accessToken', jsonData.data.tokens.accessToken);",
+                  "    pm.collectionVariables.set('refreshToken', jsonData.data.tokens.refreshToken);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@academy.com\",\n  \"password\": \"password123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "login"]
+            },
+            "description": "Se connecter et obtenir les tokens JWT"
+          }
+        },
+        {
+          "name": "Get Profile",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "me"]
+            },
+            "description": "Récupérer le profil de l'utilisateur connecté"
+          }
+        },
+        {
+          "name": "Refresh Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.collectionVariables.set('accessToken', jsonData.data.accessToken);",
+                  "    pm.collectionVariables.set('refreshToken', jsonData.data.refreshToken);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/refresh",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "refresh"]
+            },
+            "description": "Rafraîchir l'access token avec le refresh token"
+          }
+        },
+        {
+          "name": "Change Password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"oldPassword\": \"password123\",\n  \"newPassword\": \"newpassword456\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/change-password",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "change-password"]
+            },
+            "description": "Changer le mot de passe de l'utilisateur connecté"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Collèges",
+      "item": [
+        {
+          "name": "Get All Collèges",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/colleges",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "colleges"]
+            },
+            "description": "Récupérer tous les collèges (ADMIN_GLOBAL) ou son collège (ADMIN_COLLEGE)"
+          }
+        },
+        {
+          "name": "Get Collège by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/colleges/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "colleges", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{collegeId}}"
+                }
+              ]
+            },
+            "description": "Récupérer un collège par son ID"
+          }
+        },
+        {
+          "name": "Create Collège",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.collectionVariables.set('collegeId', jsonData.data.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nom\": \"Collège Einstein\",\n  \"adresse\": \"123 rue de la Science, 75001 Paris\",\n  \"siteWeb\": \"https://einstein.academy.com\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/colleges",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "colleges"]
+            },
+            "description": "Créer un nouveau collège (ADMIN_GLOBAL uniquement)"
+          }
+        },
+        {
+          "name": "Update Collège",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nom\": \"Collège Einstein - Mise à jour\",\n  \"adresse\": \"456 avenue de la Recherche, 75002 Paris\",\n  \"siteWeb\": \"https://einstein-updated.academy.com\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/colleges/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "colleges", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{collegeId}}"
+                }
+              ]
+            },
+            "description": "Mettre à jour un collège (ADMIN_GLOBAL ou ADMIN_COLLEGE de ce collège)"
+          }
+        },
+        {
+          "name": "Delete Collège",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/colleges/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "colleges", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{collegeId}}"
+                }
+              ]
+            },
+            "description": "Supprimer un collège (ADMIN_GLOBAL uniquement)"
+          }
+        }
+      ]
+    }
+  ]
+}
