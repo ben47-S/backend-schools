@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client"
   output   = "../generated/prisma"
@@ -13,9 +7,256 @@ datasource db {
   provider = "postgresql"
 }
 
-// ============================================
-// ENUMS
-// ============================================
+model admin_colleges {
+  id        String   @id @default(uuid())
+  userId    String   @unique
+  collegeId String
+  college   colleges @relation(fields: [collegeId], references: [id], onDelete: Cascade)
+  user      users    @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model annees_scolaires {
+  id                        String                    @id @default(uuid())
+  libelle                   String                    @unique
+  dateDebut                 DateTime
+  dateFin                   DateTime
+  dateOuvertureInscriptions DateTime
+  dateFermetureInscriptions DateTime
+  estActive                 Boolean                   @default(false)
+  estInscriptionOuverte     Boolean                   @default(false)
+  createdAt                 DateTime                  @default(now())
+  updatedAt                 DateTime                  @updatedAt
+  enseignant_departements   enseignant_departements[]
+  enseignant_demandes       enseignant_demandes[]     @relation("enseignant_demandes")
+  inscriptions              inscriptions[]
+  notes                     notes[]
+}
+
+model colleges {
+  id             String           @id @default(uuid())
+  nom            String
+  siteWeb        String?
+  adresse        String?
+  createdAt      DateTime         @default(now())
+  admin_colleges admin_colleges[]
+  departements   departements[]
+  etudiants      etudiants[]
+  inscriptions   inscriptions[]
+  salles         salles[]
+}
+
+model cours {
+  id           String      @id @default(uuid())
+  titre        String
+  description  String?
+  matiereId    String
+  enseignantId String
+  documentUrl  String?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  enseignant   enseignants @relation(fields: [enseignantId], references: [id], onDelete: Cascade)
+  matiere      matieres    @relation(fields: [matiereId], references: [id], onDelete: Cascade)
+}
+
+model departements {
+  id                      String                    @id @default(uuid())
+  nom                     String
+  collegeId               String
+  adminEnseignantId       String?
+  college                 colleges                  @relation(fields: [collegeId], references: [id], onDelete: Cascade)
+  adminEnseignant         enseignants?              @relation("adminDepartements", fields: [adminEnseignantId], references: [id], onDelete: SetNull)
+  enseignant_departements enseignant_departements[]
+  enseignant_demandes     enseignant_demandes[]     @relation("enseignant_demandes")
+  matieres                matieres[]
+  salles                  salles[]
+
+  @@unique([nom, collegeId])
+}
+
+model enseignant_departements {
+  id              String           @id @default(uuid())
+  enseignantId    String
+  departementId   String
+  anneeScolaireId String
+  estResponsable  Boolean          @default(false)
+  anneeScolaire   annees_scolaires @relation(fields: [anneeScolaireId], references: [id], onDelete: Cascade)
+  departement     departements     @relation(fields: [departementId], references: [id], onDelete: Cascade)
+  enseignant      enseignants      @relation(fields: [enseignantId], references: [id], onDelete: Cascade)
+
+  @@unique([enseignantId, departementId, anneeScolaireId])
+  @@index([departementId, anneeScolaireId, estResponsable])
+}
+
+model enseignant_demandes {
+  id              String           @id @default(uuid())
+  enseignantId    String
+  departementId   String
+  anneeScolaireId String
+  statut          StatutDemande    @default(EN_ATTENTE)
+  dateCreation    DateTime         @default(now())
+  dateReponse     DateTime?
+  enseignant      enseignants      @relation("enseignant_demandes", fields: [enseignantId], references: [id], onDelete: Cascade)
+  departement     departements     @relation("enseignant_demandes", fields: [departementId], references: [id], onDelete: Cascade)
+  anneeScolaire   annees_scolaires @relation("enseignant_demandes", fields: [anneeScolaireId], references: [id], onDelete: Cascade)
+
+  @@unique([enseignantId, departementId, anneeScolaireId])
+  @@index([statut])
+  @@index([enseignantId, statut])
+}
+
+model enseignants {
+  id                      String                    @id @default(uuid())
+  userId                  String                    @unique
+  nom                     String
+  prenom                  String
+  telephone               String?
+  datePriseFonction       DateTime
+  indice                  Int
+  matiereId               String?
+  cours                   cours[]
+  enseignant_departements enseignant_departements[]
+  enseignant_demandes     enseignant_demandes[]     @relation("enseignant_demandes")
+  departements_admin      departements[]            @relation("adminDepartements")
+  matiere                 matieres?                 @relation(fields: [matiereId], references: [id])
+  user                    users                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model etudiants {
+  id               String             @id @default(uuid())
+  userId           String             @unique
+  nom              String
+  prenom           String
+  telephone        String?
+  anneeEntree      Int
+  collegeId        String?
+  statut           StatutEtudiant     @default(INACTIF)
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  college          colleges?          @relation(fields: [collegeId], references: [id], onDelete: SetNull)
+  user             users              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  inscriptions     inscriptions[]
+  notes            notes[]
+  parent_etudiants parent_etudiants[]
+
+  @@index([collegeId])
+  @@index([statut])
+}
+
+model inscriptions {
+  id              String              @id @default(uuid())
+  etudiantId      String
+  collegeId       String
+  anneeScolaireId String
+  salleId         String?
+  dateInscription DateTime            @default(now())
+  statut          StatutInscription   @default(EN_ATTENTE)
+  dateReponse     DateTime?
+  anneeScolaire   annees_scolaires    @relation(fields: [anneeScolaireId], references: [id], onDelete: Cascade)
+  college         colleges            @relation(fields: [collegeId], references: [id], onDelete: Cascade)
+  etudiant        etudiants           @relation(fields: [etudiantId], references: [id], onDelete: Cascade)
+  salle           salles?             @relation(fields: [salleId], references: [id], onDelete: SetNull)
+
+  @@unique([etudiantId, anneeScolaireId])
+  @@index([salleId])
+  @@index([statut])
+  @@index([collegeId, statut])
+}
+
+model matieres {
+  id            String        @id @default(uuid())
+  nom           String
+  departementId String
+  salleId       String?
+  cours         cours[]
+  enseignants   enseignants[]
+  departement   departements  @relation(fields: [departementId], references: [id], onDelete: Cascade)
+  salle         salles?       @relation(fields: [salleId], references: [id])
+  notes         notes[]
+
+  @@unique([nom, departementId])
+}
+
+model messages {
+  id                               String   @id @default(uuid())
+  senderId                         String
+  receiverId                       String
+  sujet                            String
+  contenu                          String
+  isRead                           Boolean  @default(false)
+  createdAt                        DateTime @default(now())
+  users_messages_receiverIdTousers users    @relation("messages_receiverIdTousers", fields: [receiverId], references: [id], onDelete: Cascade)
+  users_messages_senderIdTousers   users    @relation("messages_senderIdTousers", fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@index([receiverId, isRead])
+}
+
+model notes {
+  id              String           @id @default(uuid())
+  valeur          Float
+  etudiantId      String
+  matiereId       String
+  anneeScolaireId String
+  dateNote        DateTime         @default(now())
+  commentaire     String?
+  anneeScolaire   annees_scolaires @relation(fields: [anneeScolaireId], references: [id], onDelete: Cascade)
+  etudiant        etudiants        @relation(fields: [etudiantId], references: [id], onDelete: Cascade)
+  matiere         matieres         @relation(fields: [matiereId], references: [id], onDelete: Cascade)
+
+  @@unique([etudiantId, matiereId, anneeScolaireId])
+  @@index([anneeScolaireId])
+}
+
+model parent_etudiants {
+  id         String    @id @default(uuid())
+  parentId   String
+  etudiantId String
+  etudiant   etudiants @relation(fields: [etudiantId], references: [id], onDelete: Cascade)
+  parent     parents   @relation(fields: [parentId], references: [id], onDelete: Cascade)
+
+  @@unique([parentId, etudiantId])
+}
+
+model parents {
+  id               String             @id @default(uuid())
+  userId           String             @unique
+  nom              String
+  prenom           String
+  telephone        String?
+  parent_etudiants parent_etudiants[]
+  user             users              @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model salles {
+  id            String         @id @default(uuid())
+  numero        String
+  nbPlaces      Int
+  collegeId     String
+  departementId String?
+  matieres      matieres[]
+  inscriptions  inscriptions[]
+  college       colleges       @relation(fields: [collegeId], references: [id], onDelete: Cascade)
+  departement   departements?  @relation(fields: [departementId], references: [id], onDelete: SetNull)
+
+  @@unique([numero, collegeId])
+  @@index([departementId])
+}
+
+model users {
+  id                                  String          @id @default(uuid())
+  email                               String          @unique
+  passwordHash                        String
+  role                                Role
+  photoUrl                            String?
+  isActive                            Boolean         @default(true)
+  createdAt                           DateTime        @default(now())
+  updatedAt                           DateTime        @updatedAt
+  admin_colleges                      admin_colleges?
+  enseignants                         enseignants?
+  etudiants                           etudiants?
+  messages_messages_receiverIdTousers messages[]      @relation("messages_receiverIdTousers")
+  messages_messages_senderIdTousers   messages[]      @relation("messages_senderIdTousers")
+  parents                             parents?
+}
 
 enum Role {
   ADMIN_GLOBAL
@@ -25,273 +266,20 @@ enum Role {
   PARENT
 }
 
-// ============================================
-// AUTHENTIFICATION & UTILISATEURS
-// ============================================
-
-model User {
-  id            String   @id @default(uuid())
-  email         String   @unique
-  passwordHash  String
-  role          Role
-  photoUrl      String?
-  isActive      Boolean  @default(true)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-
-  // Relations polymorphiques
-  enseignant    Enseignant?
-  etudiant      Etudiant?
-  parent        Parent?
-  adminCollege  AdminCollege?
-
-  messagesSent     Message[] @relation("MessageSender")
-  messagesReceived Message[] @relation("MessageReceiver")
-
-  @@map("users")
+enum StatutEtudiant {
+  ACTIF
+  INACTIF
+  DIPLOME
 }
 
-// ============================================
-// STRUCTURE ACADÉMIQUE
-// ============================================
-
-model College {
-  id          String   @id @default(uuid())
-  nom         String
-  siteWeb     String?
-  adresse     String?
-  createdAt   DateTime @default(now())
-
-  departements     Departement[]
-  inscriptions     Inscription[]
-  adminCollege     AdminCollege[]
-  salles           Salle[]
-
-  @@map("colleges")
+enum StatutInscription {
+  EN_ATTENTE
+  ACCEPTE
+  REFUSE
 }
 
-model AdminCollege {
-  id         String @id @default(uuid())
-  userId     String @unique
-  collegeId  String
-
-  user       User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  college    College @relation(fields: [collegeId], references: [id], onDelete: Cascade)
-
-  @@map("admin_colleges")
+enum StatutDemande {
+  EN_ATTENTE
+  ACCEPTE
+  REFUSE
 }
-
-model AnneeScolaire {
-  id          String   @id @default(uuid())
-  libelle     String   // "2024-2025"
-  dateDebut   DateTime
-  dateFin     DateTime
-  estActive   Boolean  @default(false)
-  createdAt   DateTime @default(now())
-
-  inscriptions            Inscription[]
-  notes                   Note[]
-  enseignantDepartements  EnseignantDepartement[]
-
-  @@unique([libelle])
-  @@map("annees_scolaires")
-}
-
-model Departement {
-  id        String   @id @default(uuid())
-  nom       String
-  collegeId String
-
-  college   College  @relation(fields: [collegeId], references: [id], onDelete: Cascade)
-  matieres  Matiere[]
-  enseignantDepartements EnseignantDepartement[]
-
-  @@unique([nom, collegeId])
-  @@map("departements")
-}
-
-model EnseignantDepartement {
-  id              String  @id @default(uuid())
-  enseignantId    String
-  departementId   String
-  anneeScolaireId String
-  estResponsable  Boolean @default(false)
-
-  enseignant      Enseignant     @relation(fields: [enseignantId], references: [id], onDelete: Cascade)
-  departement     Departement    @relation(fields: [departementId], references: [id], onDelete: Cascade)
-  anneeScolaire   AnneeScolaire  @relation(fields: [anneeScolaireId], references: [id], onDelete: Cascade)
-
-  @@unique([enseignantId, departementId, anneeScolaireId])
-  @@index([departementId, anneeScolaireId, estResponsable])
-  @@map("enseignant_departements")
-}
-
-// ============================================
-// ACTEURS
-// ============================================
-
-model Enseignant {
-  id                  String   @id @default(uuid())
-  userId              String   @unique
-  nom                 String
-  prenom              String
-  telephone           String?
-  datePriseFonction   DateTime
-  indice              Int
-
-  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  matiereId           String?  // Un enseignant = une matière principale
-  matiere             Matiere? @relation(fields: [matiereId], references: [id])
-  departements        EnseignantDepartement[]
-  cours               Cours[]
-
-  @@map("enseignants")
-}
-
-model Etudiant {
-  id              String   @id @default(uuid())
-  userId          String   @unique
-  nom             String
-  prenom          String
-  telephone       String?
-  anneeEntree     Int
-
-  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  inscriptions    Inscription[]
-  notes           Note[]
-  parents         ParentEtudiant[]
-
-  @@map("etudiants")
-}
-
-model Parent {
-  id        String @id @default(uuid())
-  userId    String @unique
-  nom       String
-  prenom    String
-  telephone String?
-
-  user      User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  enfants   ParentEtudiant[]
-
-  @@map("parents")
-}
-
-model ParentEtudiant {
-  id         String @id @default(uuid())
-  parentId   String
-  etudiantId String
-
-  parent     Parent   @relation(fields: [parentId], references: [id], onDelete: Cascade)
-  etudiant   Etudiant @relation(fields: [etudiantId], references: [id], onDelete: Cascade)
-
-  @@unique([parentId, etudiantId])
-  @@map("parent_etudiants")
-}
-
-// ============================================
-// MATIÈRES & SALLES
-// ============================================
-
-model Matiere {
-  id            String @id @default(uuid())
-  nom           String
-  departementId String
-  salleId       String?
-
-  departement   Departement  @relation(fields: [departementId], references: [id], onDelete: Cascade)
-  salle         Salle?       @relation(fields: [salleId], references: [id])
-  enseignants   Enseignant[]
-  notes         Note[]
-  cours         Cours[]
-
-  @@unique([nom, departementId])
-  @@map("matieres")
-}
-
-model Salle {
-  id          String @id @default(uuid())
-  numero      String
-  nbPlaces    Int
-  collegeId   String
-
-  college     College   @relation(fields: [collegeId], references: [id], onDelete: Cascade)
-  matieres    Matiere[]
-
-  @@unique([numero, collegeId])
-  @@map("salles")
-}
-
-// ============================================
-// INSCRIPTIONS & NOTES
-// ============================================
-
-model Inscription {
-  id              String @id @default(uuid())
-  etudiantId      String
-  collegeId       String
-  anneeScolaireId String
-  dateInscription DateTime @default(now())
-
-  etudiant        Etudiant      @relation(fields: [etudiantId], references: [id], onDelete: Cascade)
-  college         College       @relation(fields: [collegeId], references: [id], onDelete: Cascade)
-  anneeScolaire   AnneeScolaire @relation(fields: [anneeScolaireId], references: [id], onDelete: Cascade)
-
-  @@unique([etudiantId, anneeScolaireId])
-  @@map("inscriptions")
-}
-
-model Note {
-  id              String   @id @default(uuid())
-  valeur          Float
-  etudiantId      String
-  matiereId       String
-  anneeScolaireId String
-  dateNote        DateTime @default(now())
-  commentaire     String?
-
-  etudiant        Etudiant      @relation(fields: [etudiantId], references: [id], onDelete: Cascade)
-  matiere         Matiere       @relation(fields: [matiereId], references: [id], onDelete: Cascade)
-  anneeScolaire   AnneeScolaire @relation(fields: [anneeScolaireId], references: [id], onDelete: Cascade)
-
-  @@unique([etudiantId, matiereId, anneeScolaireId])
-  @@index([anneeScolaireId])
-  @@map("notes")
-}
-
-// ============================================
-// MESSAGERIE & COURS EN LIGNE
-// ============================================
-
-model Message {
-  id          String   @id @default(uuid())
-  senderId    String
-  receiverId  String
-  sujet       String
-  contenu     String   @db.Text
-  isRead      Boolean  @default(false)
-  createdAt   DateTime @default(now())
-
-  sender      User @relation("MessageSender", fields: [senderId], references: [id], onDelete: Cascade)
-  receiver    User @relation("MessageReceiver", fields: [receiverId], references: [id], onDelete: Cascade)
-
-  @@index([receiverId, isRead])
-  @@map("messages")
-}
-
-model Cours {
-  id            String   @id @default(uuid())
-  titre         String
-  description   String?  @db.Text
-  matiereId     String
-  enseignantId  String
-  documentUrl   String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-
-  matiere       Matiere     @relation(fields: [matiereId], references: [id], onDelete: Cascade)
-  enseignant    Enseignant  @relation(fields: [enseignantId], references: [id], onDelete: Cascade)
-
-  @@map("cours")
-}
-  

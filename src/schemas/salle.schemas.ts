@@ -22,6 +22,11 @@ export const createSalleSchema = z.object({
   collegeId: z
     .string()
     .uuid('ID de collège invalide'),
+  departementId: z
+    .string()
+    .uuid('ID de département invalide')
+    .optional()
+    .nullable(),
 });
 
 /**
@@ -40,6 +45,11 @@ export const updateSalleSchema = z.object({
     .min(1, 'Le nombre de places doit être au moins 1')
     .max(500, 'Le nombre de places ne peut pas dépasser 500')
     .optional(),
+  departementId: z
+    .string()
+    .uuid('ID de département invalide')
+    .optional()
+    .nullable(),
 });
 
 /**

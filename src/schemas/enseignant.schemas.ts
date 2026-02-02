@@ -116,3 +116,36 @@ export const removeDepartementSchema = z.object({
     .string()
     .uuid('ID d\'année scolaire invalide'),
 });
+
+/**
+ * Create teacher demand schema
+ * ADMIN sends a demand to a teacher for a department
+ */
+export const createEnseignantDemandeSchema = z.object({
+  enseignantId: z.string().uuid('ID enseignant invalide'),
+  departementId: z.string().uuid('ID département invalide'),
+  anneeScolaireId: z.string().uuid('ID année scolaire invalide'),
+});
+
+export type CreateEnseignantDemandeInput = z.infer<typeof createEnseignantDemandeSchema>;
+
+/**
+ * Respond to demand schema
+ * Teacher accepts or refuses a demand
+ */
+export const repondreDemandeSchema = z.object({
+  statut: z.enum(['ACCEPTE', 'REFUSE'], {
+    errorMap: () => ({ message: 'Statut must be ACCEPTE or REFUSE' }),
+  }),
+});
+
+export type RepondreDemandeInput = z.infer<typeof repondreDemandeSchema>;
+
+/**
+ * Enseignant demand ID schema
+ */
+export const enseignantDemandeIdSchema = z.object({
+  demandeId: z.string().uuid('ID demande invalide'),
+});
+
+export type EnseignantDemandeIdInput = z.infer<typeof enseignantDemandeIdSchema>;

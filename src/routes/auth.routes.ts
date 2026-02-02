@@ -12,6 +12,8 @@ import {
   registerSchema,
   refreshTokenSchema,
   changePasswordSchema,
+  registerEtudiantSchema,
+  registerEnseignantSchema,
 } from '../schemas/auth.schemas';
 
 const router = Router();
@@ -25,6 +27,20 @@ router.post(
   '/register',
   validateBody(registerSchema),
   authController.register
+);
+
+// POST /api/auth/register/etudiant - Register new student (dedicated endpoint)
+router.post(
+  '/register/etudiant',
+  validateBody(registerEtudiantSchema),
+  authController.registerEtudiant
+);
+
+// POST /api/auth/register/enseignant - Register new teacher (dedicated endpoint)
+router.post(
+  '/register/enseignant',
+  validateBody(registerEnseignantSchema),
+  authController.registerEnseignant
 );
 
 // POST /api/auth/login - Login user

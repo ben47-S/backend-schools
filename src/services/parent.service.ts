@@ -28,7 +28,7 @@ export const getAllParents = async (userRole: string, userId: string) => {
 
   if (userRole === 'ADMIN_COLLEGE') {
     // Get admin's college
-    const adminCollege = await prisma.adminCollege.findUnique({
+    const adminCollege = await prisma.admin_colleges.findUnique({
       where: { userId },
       select: { collegeId: true },
     });
@@ -39,7 +39,7 @@ export const getAllParents = async (userRole: string, userId: string) => {
 
     // Filter parents with at least one child enrolled in this college
     whereClause = {
-      enfants: {
+      parent_etudiants: {
         some: {
           etudiant: {
             inscriptions: {
@@ -53,7 +53,7 @@ export const getAllParents = async (userRole: string, userId: string) => {
     };
   }
 
-  const parents = await prisma.parent.findMany({
+  const parents = await prisma.parents.findMany({
     where: whereClause,
     include: {
       user: {
@@ -63,7 +63,7 @@ export const getAllParents = async (userRole: string, userId: string) => {
           isActive: true,
         },
       },
-      enfants: {
+      parent_etudiants: {
         include: {
           etudiant: {
             select: {
@@ -90,7 +90,7 @@ export const getParentById = async (
   userRole: string,
   userId: string
 ) => {
-  const parent = await prisma.parent.findUnique({
+  const parent = await prisma.parents.findUnique({
     where: { id: parentId },
     include: {
       user: {
@@ -100,7 +100,7 @@ export const getParentById = async (
           isActive: true,
         },
       },
-      enfants: {
+      parent_etudiants: {
         include: {
           etudiant: {
             select: {
@@ -138,7 +138,7 @@ export const getParentById = async (
 
   // ADMIN_COLLEGE: check if parent has at least one child in their college
   if (userRole === 'ADMIN_COLLEGE') {
-    const adminCollege = await prisma.adminCollege.findUnique({
+    const adminCollege = await prisma.admin_colleges.findUnique({
       where: { userId },
       select: { collegeId: true },
     });
@@ -173,7 +173,7 @@ export const createParent = async (
   userId: string
 ) => {
   // Verify user exists and has PARENT role
-  const user = await prisma.user.findUnique({
+  const user = await prisma.users.findUnique({
     where: { id: data.userId },
   });
 
@@ -188,7 +188,7 @@ export const createParent = async (
   }
 
   // Check if parent profile already exists for this user
-  const existingParent = await prisma.parent.findUnique({
+  const existingParent = await prisma.parents.findUnique({
     where: { userId: data.userId },
   });
 
@@ -197,7 +197,7 @@ export const createParent = async (
   }
 
   // Create parent
-  const parent = await prisma.parent.create({
+  const parent = await prisma.parents.create({
     data: {
       userId: data.userId,
       nom: data.nom,
@@ -233,7 +233,7 @@ export const updateParent = async (
   await getParentById(parentId, userRole, userId);
 
   // Update parent
-  const updatedParent = await prisma.parent.update({
+  const updatedParent = await prisma.parents.update({
     where: { id: parentId },
     data,
     include: {
@@ -270,7 +270,7 @@ export const deleteParent = async (
   }
 
   // Delete parent
-  await prisma.parent.delete({
+  await prisma.parents.delete({
     where: { id: parentId },
   });
 
@@ -290,7 +290,7 @@ export const linkChild = async (
   await getParentById(parentId, userRole, userId);
 
   // Verify student exists
-  const etudiant = await prisma.etudiant.findUnique({
+  const etudiant = await prisma.etudiants.findUnique({
     where: { id: data.etudiantId },
   });
 
@@ -299,7 +299,7 @@ export const linkChild = async (
   }
 
   // Check if link already exists
-  const existingLink = await prisma.parentEtudiant.findUnique({
+  const existingLink = await prisma.parentsEtudiant.findUnique({
     where: {
       parentId_etudiantId: {
         parentId,
@@ -313,7 +313,7 @@ export const linkChild = async (
   }
 
   // Create the link
-  const link = await prisma.parentEtudiant.create({
+  const link = await prisma.parentsEtudiant.create({
     data: {
       parentId,
       etudiantId: data.etudiantId,
@@ -345,7 +345,7 @@ export const unlinkChild = async (
   await getParentById(parentId, userRole, userId);
 
   // Check if link exists
-  const existingLink = await prisma.parentEtudiant.findUnique({
+  const existingLink = await prisma.parentsEtudiant.findUnique({
     where: {
       parentId_etudiantId: {
         parentId,
@@ -359,7 +359,7 @@ export const unlinkChild = async (
   }
 
   // Delete the link
-  await prisma.parentEtudiant.delete({
+  await prisma.parentsEtudiant.delete({
     where: {
       parentId_etudiantId: {
         parentId,

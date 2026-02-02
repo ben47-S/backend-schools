@@ -9,11 +9,13 @@ import { successResponse } from '../utils/response';
 import type {
   CreateCollegeInput,
   UpdateCollegeInput,
+  CreateCollegeWithAdminInput,
 } from '../schemas/college.schemas';
 
 /**
  * Get all colleges
  * GET /api/colleges
+ * PUBLIC route (for registration) - filters by role if authenticated
  */
 export async function getAllColleges(
   req: Request,
@@ -21,14 +23,11 @@ export async function getAllColleges(
   next: NextFunction
 ): Promise<void> {
   try {
-    if (!req.user) {
-      throw new Error('User not authenticated');
-    }
-
-    const colleges = await collegeService.getAllColleges(
-      req.user.id,
-      req.user.role
-    );
+    // If user is authenticated, filter by role
+    // If not authenticated (registration), return all colleges
+    const colleges = req.user
+      ? await collegeService.getAllColleges(req.user.id, req.user.role)
+      : await collegeService.getAllCollegesPublic();
 
     successResponse(res, colleges);
   } catch (error) {
@@ -65,8 +64,9 @@ export async function getCollegeById(
 }
 
 /**
- * Create a new college
+ * Create a new college with its administrator
  * POST /api/colleges
+ * Creates both the college and its admin user in one operation
  */
 export async function createCollege(
   req: Request,
@@ -78,11 +78,19 @@ export async function createCollege(
       throw new Error('User not authenticated');
     }
 
-    const data: CreateCollegeInput = req.body;
+    const data: CreateCollegeWithAdminInput = req.body;
 
-    const college = await collegeService.createCollege(data, req.user.id);
+    const college = await collegeService.createCollegeWithAdmin(
+      data,
+      req.user.id
+    );
 
-    successResponse(res, college, 'College created successfully', 201);
+    successResponse(
+      res,
+      college,
+      'College and administrator created successfully',
+      201
+    );
   } catch (error) {
     next(error);
   }
@@ -137,6 +145,29 @@ export async function deleteCollege(
     const result = await collegeService.deleteCollege(id, req.user.id);
 
     successResponse(res, result, 'College deleted successfully');
+  } catch (error) {
+    next(error);
+  }
+}
+
+/**
+ * Get my college (for current admin)
+ * GET /api/admin-college/me
+ * Returns the college the current admin is assigned to
+ */
+export async function getMyCollege(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    if (!req.user) {
+      throw new Error('User not authenticated');
+    }
+
+    const college = await collegeService.getMyCollege(req.user.id);
+
+    successResponse(res, college, 'College retrieved successfully');
   } catch (error) {
     next(error);
   }

@@ -21,15 +21,16 @@ export async function getAllDepartements(userId: string, userRole: string) {
   logger.debug('Fetching all departments', { userId, userRole });
 
   if (userRole === 'ADMIN_GLOBAL') {
-    const departements = await prisma.departement.findMany({
+    const departements = await prisma.departements.findMany({
       include: {
         college: {
           select: { id: true, nom: true },
         },
         _count: {
           select: {
-            enseignantDepartements: true,
+            enseignant_departements: true,
             matieres: true,
+            salles: true,
           },
         },
       },
@@ -45,7 +46,7 @@ export async function getAllDepartements(userId: string, userRole: string) {
   }
 
   if (userRole === 'ADMIN_COLLEGE') {
-    const adminCollege = await prisma.adminCollege.findUnique({
+    const adminCollege = await prisma.admin_colleges.findUnique({
       where: { userId },
       select: { collegeId: true },
     });
@@ -55,7 +56,7 @@ export async function getAllDepartements(userId: string, userRole: string) {
       throw new NotFoundError('Configuration administrateur introuvable');
     }
 
-    const departements = await prisma.departement.findMany({
+    const departements = await prisma.departements.findMany({
       where: { collegeId: adminCollege.collegeId },
       include: {
         college: {
@@ -63,8 +64,9 @@ export async function getAllDepartements(userId: string, userRole: string) {
         },
         _count: {
           select: {
-            enseignantDepartements: true,
+            enseignant_departements: true,
             matieres: true,
+            salles: true,
           },
         },
       },
@@ -95,7 +97,7 @@ export async function getDepartementsByCollege(
   logger.debug('Fetching departments by college', { collegeId, userId, userRole });
 
   // Verify college exists
-  const college = await prisma.college.findUnique({
+  const college = await prisma.colleges.findUnique({
     where: { id: collegeId },
   });
 
@@ -105,7 +107,7 @@ export async function getDepartementsByCollege(
 
   // Check access rights for ADMIN_COLLEGE
   if (userRole === 'ADMIN_COLLEGE') {
-    const adminCollege = await prisma.adminCollege.findUnique({
+    const adminCollege = await prisma.admin_colleges.findUnique({
       where: { userId },
       select: { collegeId: true },
     });
@@ -116,13 +118,14 @@ export async function getDepartementsByCollege(
     }
   }
 
-  const departements = await prisma.departement.findMany({
+  const departements = await prisma.departements.findMany({
     where: { collegeId },
     include: {
       _count: {
         select: {
-          enseignantDepartements: true,
+          enseignant_departements: true,
           matieres: true,
+          salles: true,
         },
       },
     },
@@ -147,16 +150,24 @@ export async function getDepartementById(
 ) {
   logger.debug('Fetching department by ID', { id, userId, userRole });
 
-  const departement = await prisma.departement.findUnique({
+  const departement = await prisma.departements.findUnique({
     where: { id },
     include: {
       college: {
         select: { id: true, nom: true, adresse: true, siteWeb: true },
       },
+      salles: {
+        select: {
+          id: true,
+          numero: true,
+          nbPlaces: true,
+        },
+      },
       _count: {
         select: {
-          enseignantDepartements: true,
+          enseignant_departements: true,
           matieres: true,
+          salles: true,
         },
       },
     },
@@ -169,7 +180,7 @@ export async function getDepartementById(
 
   // Check access for ADMIN_COLLEGE
   if (userRole === 'ADMIN_COLLEGE') {
-    const adminCollege = await prisma.adminCollege.findUnique({
+    const adminCollege = await prisma.admin_colleges.findUnique({
       where: { userId },
       select: { collegeId: true },
     });
@@ -204,7 +215,7 @@ export async function createDepartement(
   });
 
   // Verify college exists
-  const college = await prisma.college.findUnique({
+  const college = await prisma.colleges.findUnique({
     where: { id: data.collegeId },
   });
 
@@ -214,7 +225,7 @@ export async function createDepartement(
 
   // Check if ADMIN_COLLEGE is trying to create department for their college
   if (userRole === 'ADMIN_COLLEGE') {
-    const adminCollege = await prisma.adminCollege.findUnique({
+    const adminCollege = await prisma.admin_colleges.findUnique({
       where: { userId },
       select: { collegeId: true },
     });
@@ -226,7 +237,7 @@ export async function createDepartement(
   }
 
   // Check for duplicate name within the same college
-  const existingDepartement = await prisma.departement.findFirst({
+  const existingDepartement = await prisma.departements.findFirst({
     where: {
       nom: data.nom,
       collegeId: data.collegeId,
@@ -243,7 +254,7 @@ export async function createDepartement(
     );
   }
 
-  const departement = await prisma.departement.create({
+  const departement = await prisma.departements.create({
     data: {
       nom: data.nom,
       collegeId: data.collegeId,
@@ -282,7 +293,7 @@ export async function updateDepartement(
 ) {
   logger.debug('Updating department', { id, userId, userRole });
 
-  const departement = await prisma.departement.findUnique({
+  const departement = await prisma.departements.findUnique({
     where: { id },
     select: { id: true, collegeId: true, nom: true },
   });
@@ -293,7 +304,7 @@ export async function updateDepartement(
 
   // Check access for ADMIN_COLLEGE
   if (userRole === 'ADMIN_COLLEGE') {
-    const adminCollege = await prisma.adminCollege.findUnique({
+    const adminCollege = await prisma.admin_colleges.findUnique({
       where: { userId },
       select: { collegeId: true },
     });
@@ -306,7 +317,7 @@ export async function updateDepartement(
 
   // Check for duplicate name if name is being updated
   if (data.nom && data.nom !== departement.nom) {
-    const existingDepartement = await prisma.departement.findFirst({
+    const existingDepartement = await prisma.departements.findFirst({
       where: {
         nom: data.nom,
         collegeId: departement.collegeId,
@@ -323,7 +334,7 @@ export async function updateDepartement(
     }
   }
 
-  const updated = await prisma.departement.update({
+  const updated = await prisma.departements.update({
     where: { id },
     data: {
       nom: data.nom,
@@ -358,13 +369,14 @@ export async function deleteDepartement(
 ) {
   logger.debug('Deleting department', { id, userId, userRole });
 
-  const departement = await prisma.departement.findUnique({
+  const departement = await prisma.departements.findUnique({
     where: { id },
     include: {
       _count: {
         select: {
-          enseignantDepartements: true,
+          enseignant_departements: true,
           matieres: true,
+          salles: true,
         },
       },
     },
@@ -376,7 +388,7 @@ export async function deleteDepartement(
 
   // Check access for ADMIN_COLLEGE
   if (userRole === 'ADMIN_COLLEGE') {
-    const adminCollege = await prisma.adminCollege.findUnique({
+    const adminCollege = await prisma.admin_colleges.findUnique({
       where: { userId },
       select: { collegeId: true },
     });
@@ -388,13 +400,13 @@ export async function deleteDepartement(
   }
 
   // Check for associated data
-  if (departement._count.enseignantDepartements > 0) {
+  if (departement._count.enseignant_departements > 0) {
     logger.warn('Cannot delete department with teachers', {
       id,
-      teacherCount: departement._count.enseignantDepartements,
+      teacherCount: departement._count.enseignant_departements,
     });
     throw new BadRequestError(
-      `Impossible de supprimer: ${departement._count.enseignantDepartements} enseignant(s) associé(s)`
+      `Impossible de supprimer: ${departement._count.enseignant_departements} enseignant(s) associé(s)`
     );
   }
 
@@ -408,7 +420,7 @@ export async function deleteDepartement(
     );
   }
 
-  await prisma.departement.delete({
+  await prisma.departements.delete({
     where: { id },
   });
 

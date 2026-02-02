@@ -4,6 +4,7 @@
  */
 
 import { Router } from 'express';
+import { z } from 'zod';
 import * as enseignantController from '../controllers/enseignant.controller';
 import { authenticateToken } from '../middlewares/auth.middleware';
 import { requireAdmin } from '../middlewares/rbac.middleware';
@@ -14,6 +15,9 @@ import {
   enseignantIdSchema,
   assignDepartementSchema,
   removeDepartementSchema,
+  createEnseignantDemandeSchema,
+  repondreDemandeSchema,
+  enseignantDemandeIdSchema,
 } from '../schemas/enseignant.schemas';
 
 const router = Router();
@@ -22,6 +26,18 @@ const router = Router();
  * All routes require authentication
  */
 router.use(authenticateToken);
+
+/**
+ * GET /api/enseignants/me - Get current teacher profile with demands
+ * Must be before /:id to avoid route conflict
+ */
+router.get('/me', enseignantController.getMe);
+
+/**
+ * GET /api/enseignants/me/demandes - Get current teacher's demands
+ * Must be before /:id to avoid route conflict
+ */
+router.get('/me/demandes', enseignantController.getMesDemandes);
 
 /**
  * GET /api/enseignants - Get all teachers
@@ -96,6 +112,39 @@ router.delete(
   validateParams(enseignantIdSchema),
   validateBody(removeDepartementSchema),
   enseignantController.removeDepartement
+);
+
+/**
+ * GET /api/enseignants/:id/demandes - Get all demands for a teacher
+ * Admin or the teacher themselves
+ */
+router.get(
+  '/:id/demandes',
+  validateParams(enseignantIdSchema),
+  enseignantController.getDemandesForTeacher
+);
+
+/**
+ * POST /api/enseignants/:id/demandes - Admin sends a demand to teacher for a department
+ * ADMIN_GLOBAL and ADMIN_COLLEGE
+ */
+router.post(
+  '/:id/demandes',
+  requireAdmin,
+  validateParams(enseignantIdSchema),
+  validateBody(createEnseignantDemandeSchema),
+  enseignantController.createDemande
+);
+
+/**
+ * PATCH /api/enseignants/:id/demandes/:demandeId - Teacher responds to demand (accept/refuse)
+ * Teacher must respond to their own demands
+ */
+router.patch(
+  '/:id/demandes/:demandeId',
+  validateParams(z.object({ id: z.string().uuid(), demandeId: z.string().uuid() })),
+  validateBody(repondreDemandeSchema),
+  enseignantController.repondreDemande
 );
 
 export default router;

@@ -35,7 +35,7 @@ export const getAllNotes = async (
   // Apply role-based filtering
   if (userRole === 'ADMIN_COLLEGE') {
     // Get admin's college
-    const adminCollege = await prisma.adminCollege.findUnique({
+    const adminCollege = await prisma.admin_colleges.findUnique({
       where: { userId },
       select: { collegeId: true },
     });
@@ -55,7 +55,7 @@ export const getAllNotes = async (
     };
   } else if (userRole === 'ENSEIGNANT') {
     // Get teacher's subjects
-    const enseignant = await prisma.enseignant.findUnique({
+    const enseignant = await prisma.enseignants.findUnique({
       where: { userId },
       select: {
         matieres: {
@@ -72,7 +72,7 @@ export const getAllNotes = async (
     whereClause.matiereId = { in: matiereIds };
   } else if (userRole === 'ETUDIANT') {
     // Student can only see their own notes
-    const etudiant = await prisma.etudiant.findUnique({
+    const etudiant = await prisma.etudiants.findUnique({
       where: { userId },
       select: { id: true },
     });
@@ -84,7 +84,7 @@ export const getAllNotes = async (
     whereClause.etudiantId = etudiant.id;
   } else if (userRole === 'PARENT') {
     // Parent can see their children's notes
-    const parent = await prisma.parent.findUnique({
+    const parent = await prisma.parents.findUnique({
       where: { userId },
       include: {
         enfants: {
@@ -105,12 +105,12 @@ export const getAllNotes = async (
   if (filters.etudiantId) {
     // For ADMIN_COLLEGE, ensure student is in their college
     if (userRole === 'ADMIN_COLLEGE') {
-      const adminCollege = await prisma.adminCollege.findUnique({
+      const adminCollege = await prisma.admin_colleges.findUnique({
         where: { userId },
         select: { collegeId: true },
       });
 
-      const studentInCollege = await prisma.inscription.findFirst({
+      const studentInCollege = await prisma.inscriptions.findFirst({
         where: {
           etudiantId: filters.etudiantId,
           collegeId: adminCollege?.collegeId,
@@ -129,7 +129,7 @@ export const getAllNotes = async (
   if (filters.matiereId) {
     // For ENSEIGNANT, ensure they teach this subject
     if (userRole === 'ENSEIGNANT') {
-      const enseignant = await prisma.enseignant.findUnique({
+      const enseignant = await prisma.enseignants.findUnique({
         where: { userId },
         include: {
           matieres: {
@@ -150,7 +150,7 @@ export const getAllNotes = async (
     whereClause.anneeScolaireId = filters.anneeScolaireId;
   }
 
-  const notes = await prisma.note.findMany({
+  const notes = await prisma.notes.findMany({
     where: whereClause,
     include: {
       etudiant: {
@@ -191,7 +191,7 @@ export const getNoteById = async (
   userRole: string,
   userId: string
 ) => {
-  const note = await prisma.note.findUnique({
+  const note = await prisma.notes.findUnique({
     where: { id: noteId },
     include: {
       etudiant: {
@@ -237,7 +237,7 @@ export const getNoteById = async (
 
   // Role-based access control
   if (userRole === 'ADMIN_COLLEGE') {
-    const adminCollege = await prisma.adminCollege.findUnique({
+    const adminCollege = await prisma.admin_colleges.findUnique({
       where: { userId },
       select: { collegeId: true },
     });
@@ -250,7 +250,7 @@ export const getNoteById = async (
       throw new ForbiddenError('Cette note n\'appartient pas à votre collège');
     }
   } else if (userRole === 'ENSEIGNANT') {
-    const enseignant = await prisma.enseignant.findUnique({
+    const enseignant = await prisma.enseignants.findUnique({
       where: { userId },
       include: {
         matieres: {
@@ -263,7 +263,7 @@ export const getNoteById = async (
       throw new ForbiddenError('Vous n\'enseignez pas cette matière');
     }
   } else if (userRole === 'ETUDIANT') {
-    const etudiant = await prisma.etudiant.findUnique({
+    const etudiant = await prisma.etudiants.findUnique({
       where: { userId },
       select: { id: true },
     });
@@ -272,7 +272,7 @@ export const getNoteById = async (
       throw new ForbiddenError('Vous ne pouvez voir que vos propres notes');
     }
   } else if (userRole === 'PARENT') {
-    const parent = await prisma.parent.findUnique({
+    const parent = await prisma.parents.findUnique({
       where: { userId },
       include: {
         enfants: {
@@ -304,7 +304,7 @@ export const createNote = async (
   }
 
   // Verify student exists
-  const etudiant = await prisma.etudiant.findUnique({
+  const etudiant = await prisma.etudiants.findUnique({
     where: { id: data.etudiantId },
   });
 
@@ -313,7 +313,7 @@ export const createNote = async (
   }
 
   // Verify subject exists
-  const matiere = await prisma.matiere.findUnique({
+  const matiere = await prisma.matieres.findUnique({
     where: { id: data.matiereId },
     include: {
       departement: {
@@ -327,7 +327,7 @@ export const createNote = async (
   }
 
   // Verify academic year exists
-  const anneeScolaire = await prisma.anneeScolaire.findUnique({
+  const anneeScolaire = await prisma.annees_scolaires.findUnique({
     where: { id: data.anneeScolaireId },
   });
 
@@ -336,7 +336,7 @@ export const createNote = async (
   }
 
   // Verify student is enrolled for this academic year
-  const inscription = await prisma.inscription.findUnique({
+  const inscription = await prisma.inscriptions.findUnique({
     where: {
       etudiantId_anneeScolaireId: {
         etudiantId: data.etudiantId,
@@ -353,7 +353,7 @@ export const createNote = async (
 
   // ADMIN_COLLEGE: can only create notes in their college
   if (userRole === 'ADMIN_COLLEGE') {
-    const adminCollege = await prisma.adminCollege.findUnique({
+    const adminCollege = await prisma.admin_colleges.findUnique({
       where: { userId },
       select: { collegeId: true },
     });
@@ -373,7 +373,7 @@ export const createNote = async (
 
   // ENSEIGNANT: can only create notes for subjects they teach
   if (userRole === 'ENSEIGNANT') {
-    const enseignant = await prisma.enseignant.findUnique({
+    const enseignant = await prisma.enseignants.findUnique({
       where: { userId },
       include: {
         matieres: {
@@ -392,7 +392,7 @@ export const createNote = async (
   }
 
   // Check if note already exists (unique constraint)
-  const existingNote = await prisma.note.findUnique({
+  const existingNote = await prisma.notes.findUnique({
     where: {
       etudiantId_matiereId_anneeScolaireId: {
         etudiantId: data.etudiantId,
@@ -409,7 +409,7 @@ export const createNote = async (
   }
 
   // Create note
-  const note = await prisma.note.create({
+  const note = await prisma.notes.create({
     data: {
       valeur: data.valeur,
       etudiantId: data.etudiantId,
@@ -469,7 +469,7 @@ export const updateNote = async (
   if (data.commentaire !== undefined) updateData.commentaire = data.commentaire;
 
   // Update note
-  const updatedNote = await prisma.note.update({
+  const updatedNote = await prisma.notes.update({
     where: { id: noteId },
     data: updateData,
     include: {
@@ -515,7 +515,7 @@ export const deleteNote = async (
   await getNoteById(noteId, userRole, userId);
 
   // Delete note
-  await prisma.note.delete({
+  await prisma.notes.delete({
     where: { id: noteId },
   });
 
@@ -533,7 +533,7 @@ export const getStudentStatistics = async (
   userId: string
 ) => {
   // Verify student exists
-  const etudiant = await prisma.etudiant.findUnique({
+  const etudiant = await prisma.etudiants.findUnique({
     where: { id: etudiantId },
     select: {
       id: true,
@@ -547,7 +547,7 @@ export const getStudentStatistics = async (
   }
 
   // Verify academic year exists
-  const anneeScolaire = await prisma.anneeScolaire.findUnique({
+  const anneeScolaire = await prisma.annees_scolaires.findUnique({
     where: { id: anneeScolaireId },
   });
 
@@ -556,7 +556,7 @@ export const getStudentStatistics = async (
   }
 
   // Verify enrollment
-  const inscription = await prisma.inscription.findUnique({
+  const inscription = await prisma.inscriptions.findUnique({
     where: {
       etudiantId_anneeScolaireId: {
         etudiantId,
@@ -581,7 +581,7 @@ export const getStudentStatistics = async (
 
   // Role-based access control
   if (userRole === 'ADMIN_COLLEGE') {
-    const adminCollege = await prisma.adminCollege.findUnique({
+    const adminCollege = await prisma.admin_colleges.findUnique({
       where: { userId },
       select: { collegeId: true },
     });
@@ -590,7 +590,7 @@ export const getStudentStatistics = async (
       throw new ForbiddenError('Cet étudiant n\'est pas dans votre collège');
     }
   } else if (userRole === 'ETUDIANT') {
-    const currentEtudiant = await prisma.etudiant.findUnique({
+    const currentEtudiant = await prisma.etudiants.findUnique({
       where: { userId },
       select: { id: true },
     });
@@ -599,7 +599,7 @@ export const getStudentStatistics = async (
       throw new ForbiddenError('Vous ne pouvez voir que vos propres statistiques');
     }
   } else if (userRole === 'PARENT') {
-    const parent = await prisma.parent.findUnique({
+    const parent = await prisma.parents.findUnique({
       where: { userId },
       include: {
         enfants: {
@@ -613,7 +613,7 @@ export const getStudentStatistics = async (
     }
   } else if (userRole === 'ENSEIGNANT') {
     // Teachers can only see stats for students in their subjects
-    const enseignant = await prisma.enseignant.findUnique({
+    const enseignant = await prisma.enseignants.findUnique({
       where: { userId },
       include: {
         matieres: true,
@@ -626,7 +626,7 @@ export const getStudentStatistics = async (
 
     // Check if student has at least one note in teacher's subjects
     const matiereIds = enseignant.matieres.map((m) => m.id);
-    const hasNote = await prisma.note.findFirst({
+    const hasNote = await prisma.notes.findFirst({
       where: {
         etudiantId,
         anneeScolaireId,
@@ -640,7 +640,7 @@ export const getStudentStatistics = async (
   }
 
   // Get all notes for this student and academic year
-  const notes = await prisma.note.findMany({
+  const notes = await prisma.notes.findMany({
     where: {
       etudiantId,
       anneeScolaireId,

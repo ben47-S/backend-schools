@@ -1,0 +1,113 @@
+/**
+ * End of Year Job
+ * Automatic year-end processing for students
+ * Removes students from colleges and sets status to INACTIF at end of academic year
+ */
+
+import { prisma } from '../lib/prisma';
+import { logger } from '../utils/logger';
+
+/**
+ * Job executed at the end of each academic year
+ * Removes collegeId from students and changes their status to INACTIF
+ */
+export const endOfYearJob = async () => {
+  logger.info('Starting end-of-year job...');
+
+  try {
+    const now = new Date();
+
+    // 1. Find expired active academic years
+    const expiredYears = await prisma.annees_scolaires.findMany({
+      where: {
+        estActive: true,
+        dateFin: {
+          lt: now, // Years with end date in the past
+        },
+      },
+      select: {
+        id: true,
+        libelle: true,
+        dateFin: true,
+      },
+    });
+
+    if (expiredYears.length === 0) {
+      logger.info('No expired academic years found');
+      return;
+    }
+
+    logger.info(`Found ${expiredYears.length} expired academic year(s)`, {
+      years: expiredYears.map((y) => y.libelle),
+    });
+
+    // 2. Process each expired year
+    for (const year of expiredYears) {
+      await prisma.$transaction(
+        async (tx) => {
+          // a) Find all students with ACCEPTED enrollments for this year
+          const inscriptions = await tx.inscriptions.findMany({
+            where: {
+              anneeScolaireId: year.id,
+              statut: 'ACCEPTE',
+            },
+            select: {
+              etudiantId: true,
+              etudiant: {
+                select: {
+                  id: true,
+                  nom: true,
+                  prenom: true,
+                  statut: true,
+                },
+              },
+            },
+          });
+
+          if (inscriptions.length === 0) {
+            logger.info(`No accepted students for year ${year.libelle}`);
+            return;
+          }
+
+          // b) Update all these students
+          const etudiantIds = inscriptions.map((i) => i.etudiantId);
+
+          const result = await tx.etudiants.updateMany({
+            where: {
+              id: { in: etudiantIds },
+              statut: 'ACTIF', // Only students who are currently active
+            },
+            data: {
+              collegeId: null,
+              statut: 'INACTIF',
+            },
+          });
+
+          logger.info(
+            `Updated ${result.count} students to INACTIF for year ${year.libelle}`,
+            {
+              year: year.libelle,
+              studentsCount: result.count,
+            }
+          );
+
+          // c) Deactivate the academic year
+          await tx.annees_scolaires.update({
+            where: { id: year.id },
+            data: { estActive: false },
+          });
+
+          logger.info(`Deactivated academic year: ${year.libelle}`);
+        },
+        {
+          timeout: 30000, // 30 seconds timeout for transaction (Neon can be slow)
+        }
+      );
+    }
+
+    logger.info('End-of-year job completed successfully');
+  } catch (error) {
+    logger.error('Error in end-of-year job', { error });
+    throw error;
+  }
+};

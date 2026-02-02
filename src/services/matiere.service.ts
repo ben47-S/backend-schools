@@ -21,7 +21,7 @@ export async function getAllMatieres(userId: string, userRole: string) {
   logger.debug('Fetching all subjects', { userId, userRole });
 
   if (userRole === 'ADMIN_GLOBAL') {
-    const matieres = await prisma.matiere.findMany({
+    const matieres = await prisma.matieres.findMany({
       include: {
         departement: {
           select: {
@@ -56,7 +56,7 @@ export async function getAllMatieres(userId: string, userRole: string) {
   }
 
   if (userRole === 'ADMIN_COLLEGE') {
-    const adminCollege = await prisma.adminCollege.findUnique({
+    const adminCollege = await prisma.admin_colleges.findUnique({
       where: { userId },
       select: { collegeId: true },
     });
@@ -66,7 +66,7 @@ export async function getAllMatieres(userId: string, userRole: string) {
       throw new NotFoundError('Configuration administrateur introuvable');
     }
 
-    const matieres = await prisma.matiere.findMany({
+    const matieres = await prisma.matieres.findMany({
       where: {
         departement: {
           collegeId: adminCollege.collegeId,
@@ -118,7 +118,7 @@ export async function getMatieresByDepartement(
   logger.debug('Fetching subjects by department', { departementId, userId, userRole });
 
   // Verify department exists
-  const departement = await prisma.departement.findUnique({
+  const departement = await prisma.departements.findUnique({
     where: { id: departementId },
     select: { id: true, collegeId: true },
   });
@@ -129,7 +129,7 @@ export async function getMatieresByDepartement(
 
   // Check access rights for ADMIN_COLLEGE
   if (userRole === 'ADMIN_COLLEGE') {
-    const adminCollege = await prisma.adminCollege.findUnique({
+    const adminCollege = await prisma.admin_colleges.findUnique({
       where: { userId },
       select: { collegeId: true },
     });
@@ -140,7 +140,7 @@ export async function getMatieresByDepartement(
     }
   }
 
-  const matieres = await prisma.matiere.findMany({
+  const matieres = await prisma.matieres.findMany({
     where: { departementId },
     include: {
       salle: {
@@ -175,7 +175,7 @@ export async function getMatiereById(
 ) {
   logger.debug('Fetching subject by ID', { id, userId, userRole });
 
-  const matiere = await prisma.matiere.findUnique({
+  const matiere = await prisma.matieres.findUnique({
     where: { id },
     include: {
       departement: {
@@ -208,12 +208,12 @@ export async function getMatiereById(
 
   // Check access for ADMIN_COLLEGE
   if (userRole === 'ADMIN_COLLEGE') {
-    const adminCollege = await prisma.adminCollege.findUnique({
+    const adminCollege = await prisma.admin_colleges.findUnique({
       where: { userId },
       select: { collegeId: true },
     });
 
-    if (!adminCollege || adminCollege.collegeId !== matiere.departement.collegeId) {
+    if (!adminCollege || adminCollege.collegeId !== matiere.departements.collegeId) {
       logger.access(userId, 'Matiere', 'READ', false, 'College mismatch');
       throw new ForbiddenError('Accès non autorisé à cette matière');
     }
@@ -244,7 +244,7 @@ export async function createMatiere(
   });
 
   // Verify department exists and get college
-  const departement = await prisma.departement.findUnique({
+  const departement = await prisma.departements.findUnique({
     where: { id: data.departementId },
     select: { id: true, collegeId: true },
   });
@@ -255,7 +255,7 @@ export async function createMatiere(
 
   // Check if ADMIN_COLLEGE is trying to create subject for their college
   if (userRole === 'ADMIN_COLLEGE') {
-    const adminCollege = await prisma.adminCollege.findUnique({
+    const adminCollege = await prisma.admin_colleges.findUnique({
       where: { userId },
       select: { collegeId: true },
     });
@@ -270,7 +270,7 @@ export async function createMatiere(
 
   // Verify salle exists and belongs to same college if provided
   if (data.salleId) {
-    const salle = await prisma.salle.findUnique({
+    const salle = await prisma.salles.findUnique({
       where: { id: data.salleId },
       select: { id: true, collegeId: true },
     });
@@ -287,7 +287,7 @@ export async function createMatiere(
   }
 
   // Check for duplicate name within the same department
-  const existingMatiere = await prisma.matiere.findFirst({
+  const existingMatiere = await prisma.matieres.findFirst({
     where: {
       nom: data.nom,
       departementId: data.departementId,
@@ -304,7 +304,7 @@ export async function createMatiere(
     );
   }
 
-  const matiere = await prisma.matiere.create({
+  const matiere = await prisma.matieres.create({
     data: {
       nom: data.nom,
       departementId: data.departementId,
@@ -349,7 +349,7 @@ export async function updateMatiere(
 ) {
   logger.debug('Updating subject', { id, userId, userRole });
 
-  const matiere = await prisma.matiere.findUnique({
+  const matiere = await prisma.matieres.findUnique({
     where: { id },
     select: {
       id: true,
@@ -367,12 +367,12 @@ export async function updateMatiere(
 
   // Check access for ADMIN_COLLEGE
   if (userRole === 'ADMIN_COLLEGE') {
-    const adminCollege = await prisma.adminCollege.findUnique({
+    const adminCollege = await prisma.admin_colleges.findUnique({
       where: { userId },
       select: { collegeId: true },
     });
 
-    if (!adminCollege || adminCollege.collegeId !== matiere.departement.collegeId) {
+    if (!adminCollege || adminCollege.collegeId !== matiere.departements.collegeId) {
       logger.access(userId, 'Matiere', 'UPDATE', false, 'College mismatch');
       throw new ForbiddenError('Accès non autorisé à cette matière');
     }
@@ -380,7 +380,7 @@ export async function updateMatiere(
 
   // Check for duplicate name if name is being updated
   if (data.nom && data.nom !== matiere.nom) {
-    const existingMatiere = await prisma.matiere.findFirst({
+    const existingMatiere = await prisma.matieres.findFirst({
       where: {
         nom: data.nom,
         departementId: matiere.departementId,
@@ -401,7 +401,7 @@ export async function updateMatiere(
 
   // Verify salle exists and belongs to same college if provided
   if (data.salleId) {
-    const salle = await prisma.salle.findUnique({
+    const salle = await prisma.salles.findUnique({
       where: { id: data.salleId },
       select: { id: true, collegeId: true },
     });
@@ -410,14 +410,14 @@ export async function updateMatiere(
       throw new NotFoundError('Salle introuvable');
     }
 
-    if (salle.collegeId !== matiere.departement.collegeId) {
+    if (salle.collegeId !== matiere.departements.collegeId) {
       throw new BadRequestError(
         'La salle doit appartenir au même collège que le département'
       );
     }
   }
 
-  const updated = await prisma.matiere.update({
+  const updated = await prisma.matieres.update({
     where: { id },
     data: {
       nom: data.nom,
@@ -456,7 +456,7 @@ export async function deleteMatiere(
 ) {
   logger.debug('Deleting subject', { id, userId, userRole });
 
-  const matiere = await prisma.matiere.findUnique({
+  const matiere = await prisma.matieres.findUnique({
     where: { id },
     include: {
       departement: {
@@ -478,12 +478,12 @@ export async function deleteMatiere(
 
   // Check access for ADMIN_COLLEGE
   if (userRole === 'ADMIN_COLLEGE') {
-    const adminCollege = await prisma.adminCollege.findUnique({
+    const adminCollege = await prisma.admin_colleges.findUnique({
       where: { userId },
       select: { collegeId: true },
     });
 
-    if (!adminCollege || adminCollege.collegeId !== matiere.departement.collegeId) {
+    if (!adminCollege || adminCollege.collegeId !== matiere.departements.collegeId) {
       logger.access(userId, 'Matiere', 'DELETE', false, 'College mismatch');
       throw new ForbiddenError('Accès non autorisé à cette matière');
     }
@@ -520,7 +520,7 @@ export async function deleteMatiere(
     );
   }
 
-  await prisma.matiere.delete({
+  await prisma.matieres.delete({
     where: { id },
   });
 

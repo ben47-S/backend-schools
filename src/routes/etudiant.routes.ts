@@ -9,6 +9,7 @@ import { authenticateToken } from '../middlewares/auth.middleware';
 import { requireAdmin } from '../middlewares/rbac.middleware';
 import { validateBody, validateParams } from '../middlewares/validate.middleware';
 import {
+  createEtudiantWithUserSchema,
   createEtudiantSchema,
   updateEtudiantSchema,
   etudiantIdSchema,
@@ -20,6 +21,24 @@ const router = Router();
  * All routes require authentication
  */
 router.use(authenticateToken);
+
+/**
+ * GET /api/etudiants/me/inscriptions - Get current student's inscriptions
+ * Must be before /:id to avoid route conflict
+ */
+router.get(
+  '/me/inscriptions',
+  etudiantController.getMesInscriptions
+);
+
+/**
+ * GET /api/etudiants/me/notes - Get current student's notes
+ * Must be before /:id to avoid route conflict
+ */
+router.get(
+  '/me/notes',
+  etudiantController.getMesNotes
+);
 
 /**
  * GET /api/etudiants - Get all students
@@ -37,8 +56,24 @@ router.get(
   etudiantController.getEtudiantById
 );
 
+// REMOVED: /create-user endpoint
+// Students now self-register via /api/auth/register
+// Enrollment happens via enrollment request workflow
+
 /**
- * POST /api/etudiants - Create a new student
+ * POST /api/etudiants/with-user - Create a new student with user account
+ * ADMIN_GLOBAL and ADMIN_COLLEGE
+ * Legacy endpoint - kept for compatibility
+ */
+router.post(
+  '/with-user',
+  requireAdmin,
+  validateBody(createEtudiantWithUserSchema),
+  etudiantController.createEtudiantWithUser
+);
+
+/**
+ * POST /api/etudiants - Create a new student (for existing user)
  * ADMIN_GLOBAL and ADMIN_COLLEGE
  */
 router.post(

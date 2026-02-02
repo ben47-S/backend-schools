@@ -8,26 +8,75 @@ import { z } from 'zod';
 /**
  * Create annee scolaire schema
  */
-export const createAnneeScolaireSchema = z.object({
-  libelle: z
-    .string()
-    .min(1, 'Le libellé est requis')
-    .max(50, 'Le libellé est trop long')
-    .regex(/^\d{4}-\d{4}$/, 'Format attendu: YYYY-YYYY (ex: 2024-2025)'),
-  dateDebut: z.string().datetime('Date de début invalide'),
-  dateFin: z.string().datetime('Date de fin invalide'),
-  estActive: z.boolean().optional().default(false),
-}).refine(
-  (data) => {
-    const debut = new Date(data.dateDebut);
-    const fin = new Date(data.dateFin);
-    return debut < fin;
-  },
-  {
-    message: 'La date de début doit être antérieure à la date de fin',
-    path: ['dateFin'],
-  }
-);
+export const createAnneeScolaireSchema = z
+  .object({
+    libelle: z
+      .string()
+      .min(1)
+      .max(50)
+      .regex(/^\d{4}-\d{4}$/, 'Format attendu: YYYY-YYYY (ex: 2024-2025)'),
+
+    dateDebut: z.coerce.date(),
+    dateFin: z.coerce.date(),
+    dateOuvertureInscriptions: z.coerce.date(),
+    dateFermetureInscriptions: z.coerce.date(),
+
+    estActive: z.boolean().optional().default(false),
+  })
+  .superRefine((data, ctx) => {
+    const { dateDebut, dateFin, dateOuvertureInscriptions, dateFermetureInscriptions, libelle } = data;
+
+    // 1️⃣ début < fin
+    if (dateDebut >= dateFin) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'La date de début doit être antérieure à la date de fin',
+        path: ['dateFin'],
+      });
+    }
+
+    // 2️⃣ ouverture dans la période
+    if (dateOuvertureInscriptions < dateDebut || dateOuvertureInscriptions > dateFin) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "La date d'ouverture des inscriptions doit être dans la période de l'année scolaire",
+        path: ['dateOuvertureInscriptions'],
+      });
+    }
+
+    // 3️⃣ fermeture dans la période
+    if (dateFermetureInscriptions < dateDebut || dateFermetureInscriptions > dateFin) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "La date de fermeture des inscriptions doit être dans la période de l'année scolaire",
+        path: ['dateFermetureInscriptions'],
+      });
+    }
+
+    // 4️⃣ ouverture < fermeture
+    if (dateOuvertureInscriptions >= dateFermetureInscriptions) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "La date d'ouverture doit être avant la date de fermeture",
+        path: ['dateFermetureInscriptions'],
+      });
+    }
+
+    // 5️⃣ cohérence avec libelle
+    const [anneeDebut, anneeFin] = libelle.split('-').map(Number);
+
+    if (
+      dateDebut.getFullYear() !== anneeDebut ||
+      dateFin.getFullYear() !== anneeFin
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Les années du libellé doivent correspondre aux dates',
+        path: ['libelle'],
+      });
+    }
+  });
+
 
 export type CreateAnneeScolaireInput = z.infer<typeof createAnneeScolaireSchema>;
 

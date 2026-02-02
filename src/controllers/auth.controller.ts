@@ -11,6 +11,8 @@ import type {
   LoginInput,
   RefreshTokenInput,
   ChangePasswordInput,
+  RegisterEtudiantInput,
+  RegisterEnseignantInput,
 } from '../schemas/auth.schemas';
 
 /**
@@ -100,6 +102,52 @@ export async function getMe(
 
     successResponse(res, profile, 'Profile retrieved successfully');
   } catch (error) {
+    next(error);
+  }
+}
+
+/**
+ * Register a new student (dedicated endpoint)
+ * POST /api/auth/register/etudiant
+ */
+export async function registerEtudiant(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    const data: RegisterEtudiantInput = req.body;
+    console.log(`📝 Inscription étudiant - Email: ${data.email}`);
+
+    const result = await authService.registerEtudiant(data);
+
+    console.log(`✅ Étudiant inscrit avec succès - ID: ${result.user.id}`);
+    successResponse(res, result, 'Inscription réussie !', 201);
+  } catch (error) {
+    console.error(`❌ Erreur inscription étudiant - Email: ${req.body.email}`, error);
+    next(error);
+  }
+}
+
+/**
+ * Register a new teacher (dedicated endpoint)
+ * POST /api/auth/register/enseignant
+ */
+export async function registerEnseignant(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    const data: RegisterEnseignantInput = req.body;
+    console.log(`📝 Inscription enseignant - Email: ${data.email}`);
+
+    const result = await authService.registerEnseignant(data);
+
+    console.log(`✅ Enseignant inscrit avec succès - ID: ${result.user.id}`);
+    successResponse(res, result, 'Inscription réussie !', 201);
+  } catch (error) {
+    console.error(`❌ Erreur inscription enseignant - Email: ${req.body.email}`, error);
     next(error);
   }
 }

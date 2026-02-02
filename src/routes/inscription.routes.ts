@@ -13,6 +13,8 @@ import {
   updateInscriptionSchema,
   inscriptionIdSchema,
   inscriptionFiltersSchema,
+  createDemandeInscriptionSchema,
+  repondreDemandeSchema,
 } from '../schemas/inscription.schemas';
 import { z } from 'zod';
 
@@ -32,6 +34,47 @@ router.get(
   '/etudiant/:etudiantId',
   validateParams(z.object({ etudiantId: z.string().uuid() })),
   inscriptionController.getInscriptionsByStudent
+);
+
+/**
+ * POST /api/inscriptions/demandes - Student submits enrollment request
+ * ETUDIANT role only
+ */
+router.post(
+  '/demandes',
+  validateBody(createDemandeInscriptionSchema),
+  inscriptionController.createDemandeInscription
+);
+
+/**
+ * GET /api/inscriptions/mes-demandes - Student views their own enrollment requests
+ * ETUDIANT role only
+ */
+router.get(
+  '/mes-demandes',
+  inscriptionController.getMesDemandesInscription
+);
+
+/**
+ * GET /api/inscriptions/demandes-en-attente - Admin views pending enrollment requests
+ * ADMIN_GLOBAL and ADMIN_COLLEGE
+ */
+router.get(
+  '/demandes-en-attente',
+  requireAdmin,
+  inscriptionController.getDemandesEnAttente
+);
+
+/**
+ * PATCH /api/inscriptions/:id/reponse - Admin responds to enrollment request
+ * ADMIN_GLOBAL and ADMIN_COLLEGE
+ */
+router.patch(
+  '/:id/reponse',
+  requireAdmin,
+  validateParams(inscriptionIdSchema),
+  validateBody(repondreDemandeSchema),
+  inscriptionController.repondreDemandeInscription
 );
 
 /**

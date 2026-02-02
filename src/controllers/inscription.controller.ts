@@ -144,3 +144,78 @@ export const getInscriptionsByStudent = async (
     next(error);
   }
 };
+
+/**
+ * POST /api/inscriptions/demandes
+ * Student submits enrollment request
+ */
+export const createDemandeInscription = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const userId = req.user!.id;
+    const demande = await inscriptionService.createDemandeInscription(req.body, userId);
+    successResponse(res, demande, 'Demande d\'inscription envoyée avec succès', 201);
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * PATCH /api/inscriptions/:id/reponse
+ * Admin responds to enrollment request
+ */
+export const repondreDemandeInscription = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user!.id;
+    const userRole = req.user!.role;
+    const result = await inscriptionService.repondreDemandeInscription(id, req.body, userId, userRole);
+    successResponse(res, result, 'Réponse à la demande enregistrée avec succès');
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * GET /api/inscriptions/mes-demandes
+ * Student views their own enrollment requests
+ */
+export const getMesDemandesInscription = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const userId = req.user!.id;
+    const demandes = await inscriptionService.getMesDemandesInscription(userId);
+    successResponse(res, demandes, 'Vos demandes d\'inscription récupérées avec succès');
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * GET /api/inscriptions/demandes-en-attente
+ * Admin views pending enrollment requests
+ */
+export const getDemandesEnAttente = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const userId = req.user!.id;
+    const userRole = req.user!.role;
+    const demandes = await inscriptionService.getDemandesEnAttente(userId, userRole);
+    successResponse(res, demandes, 'Demandes en attente récupérées avec succès');
+  } catch (error) {
+    next(error);
+  }
+};

@@ -1,0 +1,25 @@
+/**
+ * Job Scheduler
+ * Manages scheduled job execution using node-cron
+ */
+
+import cron from 'node-cron';
+import { endOfYearJob } from './endOfYearJob';
+import { logger } from '../utils/logger';
+
+/**
+ * Start all scheduled jobs
+ */
+export const startScheduler = () => {
+  // Run end-of-year job daily at midnight (00:00)
+  cron.schedule('0 0 * * *', async () => {
+    logger.info('Running scheduled end-of-year job');
+    try {
+      await endOfYearJob();
+    } catch (error) {
+      logger.error('Scheduled end-of-year job failed', { error });
+    }
+  });
+
+  logger.info('Scheduler started: end-of-year job will run daily at midnight');
+};

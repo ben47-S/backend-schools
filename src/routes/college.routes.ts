@@ -10,6 +10,7 @@ import { requireRoles, requireAdmin } from '../middlewares/rbac.middleware';
 import { validateBody, validateParams } from '../middlewares/validate.middleware';
 import {
   createCollegeSchema,
+  createCollegeWithAdminSchema,
   updateCollegeSchema,
   collegeIdSchema,
 } from '../schemas/college.schemas';
@@ -17,18 +18,11 @@ import {
 const router = Router();
 
 /**
- * All routes require authentication
- */
-router.use(authenticateToken);
-
-/**
- * GET /api/colleges - Get all colleges
- * ADMIN_GLOBAL: all colleges
- * ADMIN_COLLEGE: their college only
+ * GET /api/colleges - Get all colleges (PUBLIC - for registration)
+ * When authenticated: ADMIN_GLOBAL gets all, ADMIN_COLLEGE gets their college only
  */
 router.get(
   '/',
-  requireAdmin, // ADMIN_GLOBAL or ADMIN_COLLEGE
   collegeController.getAllColleges
 );
 
@@ -39,19 +33,22 @@ router.get(
  */
 router.get(
   '/:id',
+  authenticateToken,
   requireAdmin,
   validateParams(collegeIdSchema),
   collegeController.getCollegeById
 );
 
 /**
- * POST /api/colleges - Create a new college
+ * POST /api/colleges - Create a new college with administrator
  * ADMIN_GLOBAL only
+ * Creates both college and admin user in one operation
  */
 router.post(
   '/',
+  authenticateToken,
   requireRoles('ADMIN_GLOBAL'),
-  validateBody(createCollegeSchema),
+  validateBody(createCollegeWithAdminSchema),
   collegeController.createCollege
 );
 
@@ -62,6 +59,7 @@ router.post(
  */
 router.put(
   '/:id',
+  authenticateToken,
   requireAdmin,
   validateParams(collegeIdSchema),
   validateBody(updateCollegeSchema),
@@ -74,6 +72,7 @@ router.put(
  */
 router.delete(
   '/:id',
+  authenticateToken,
   requireRoles('ADMIN_GLOBAL'),
   validateParams(collegeIdSchema),
   collegeController.deleteCollege

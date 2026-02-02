@@ -21,14 +21,18 @@ export async function getAllSalles(userId: string, userRole: string) {
   logger.debug('Fetching all classrooms', { userId, userRole });
 
   if (userRole === 'ADMIN_GLOBAL') {
-    const salles = await prisma.salle.findMany({
+    const salles = await prisma.salles.findMany({
       include: {
         college: {
+          select: { id: true, nom: true },
+        },
+        departement: {
           select: { id: true, nom: true },
         },
         _count: {
           select: {
             matieres: true,
+            inscriptions: true,
           },
         },
       },
@@ -44,7 +48,7 @@ export async function getAllSalles(userId: string, userRole: string) {
   }
 
   if (userRole === 'ADMIN_COLLEGE') {
-    const adminCollege = await prisma.adminCollege.findUnique({
+    const adminCollege = await prisma.admin_colleges.findUnique({
       where: { userId },
       select: { collegeId: true },
     });
@@ -54,15 +58,19 @@ export async function getAllSalles(userId: string, userRole: string) {
       throw new NotFoundError('Configuration administrateur introuvable');
     }
 
-    const salles = await prisma.salle.findMany({
+    const salles = await prisma.salles.findMany({
       where: { collegeId: adminCollege.collegeId },
       include: {
         college: {
           select: { id: true, nom: true },
         },
+        departement: {
+          select: { id: true, nom: true },
+        },
         _count: {
           select: {
             matieres: true,
+            inscriptions: true,
           },
         },
       },
@@ -93,7 +101,7 @@ export async function getSallesByCollege(
   logger.debug('Fetching classrooms by college', { collegeId, userId, userRole });
 
   // Verify college exists
-  const college = await prisma.college.findUnique({
+  const college = await prisma.colleges.findUnique({
     where: { id: collegeId },
   });
 
@@ -103,7 +111,7 @@ export async function getSallesByCollege(
 
   // Check access rights for ADMIN_COLLEGE
   if (userRole === 'ADMIN_COLLEGE') {
-    const adminCollege = await prisma.adminCollege.findUnique({
+    const adminCollege = await prisma.admin_colleges.findUnique({
       where: { userId },
       select: { collegeId: true },
     });
@@ -114,12 +122,16 @@ export async function getSallesByCollege(
     }
   }
 
-  const salles = await prisma.salle.findMany({
+  const salles = await prisma.salles.findMany({
     where: { collegeId },
     include: {
+      departement: {
+        select: { id: true, nom: true },
+      },
       _count: {
         select: {
           matieres: true,
+          inscriptions: true,
         },
       },
     },
@@ -144,15 +156,19 @@ export async function getSalleById(
 ) {
   logger.debug('Fetching classroom by ID', { id, userId, userRole });
 
-  const salle = await prisma.salle.findUnique({
+  const salle = await prisma.salles.findUnique({
     where: { id },
     include: {
       college: {
         select: { id: true, nom: true, adresse: true, siteWeb: true },
       },
+      departement: {
+        select: { id: true, nom: true },
+      },
       _count: {
         select: {
           matieres: true,
+          inscriptions: true,
         },
       },
     },
@@ -165,7 +181,7 @@ export async function getSalleById(
 
   // Check access for ADMIN_COLLEGE
   if (userRole === 'ADMIN_COLLEGE') {
-    const adminCollege = await prisma.adminCollege.findUnique({
+    const adminCollege = await prisma.admin_colleges.findUnique({
       where: { userId },
       select: { collegeId: true },
     });
@@ -189,6 +205,7 @@ export async function createSalle(
     numero: string;
     nbPlaces: number;
     collegeId: string;
+    departementId?: string | null;
   },
   userId: string,
   userRole: string
@@ -198,10 +215,11 @@ export async function createSalle(
     userRole,
     numero: data.numero,
     collegeId: data.collegeId,
+    departementId: data.departementId,
   });
 
   // Verify college exists
-  const college = await prisma.college.findUnique({
+  const college = await prisma.colleges.findUnique({
     where: { id: data.collegeId },
   });
 
@@ -209,9 +227,37 @@ export async function createSalle(
     throw new NotFoundError('Collège introuvable');
   }
 
+  // Verify department exists and belongs to the college if provided
+  if (data.departementId) {
+    const departement = await prisma.departements.findUnique({
+      where: { id: data.departementId },
+      select: { id: true, collegeId: true, nom: true },
+    });
+
+    if (!departement) {
+      throw new NotFoundError('Département introuvable');
+    }
+
+    if (departement.collegeId !== data.collegeId) {
+      throw new BadRequestError('Le département ne fait pas partie de ce collège');
+    }
+
+    // Check that the department doesn't already have a salle (1-to-1 constraint)
+    const existingSalle = await prisma.salles.findFirst({
+      where: { departementId: data.departementId },
+      select: { id: true, numero: true },
+    });
+
+    if (existingSalle) {
+      throw new ConflictError(
+        `Le département "${departement.nom}" a déjà une salle (Salle ${existingSalle.numero}). Un département ne peut avoir qu'une seule salle.`
+      );
+    }
+  }
+
   // Check if ADMIN_COLLEGE is trying to create classroom for their college
   if (userRole === 'ADMIN_COLLEGE') {
-    const adminCollege = await prisma.adminCollege.findUnique({
+    const adminCollege = await prisma.admin_colleges.findUnique({
       where: { userId },
       select: { collegeId: true },
     });
@@ -223,7 +269,7 @@ export async function createSalle(
   }
 
   // Check for duplicate numero within the same college
-  const existingSalle = await prisma.salle.findFirst({
+  const existingSalle = await prisma.salles.findFirst({
     where: {
       numero: data.numero,
       collegeId: data.collegeId,
@@ -240,14 +286,18 @@ export async function createSalle(
     );
   }
 
-  const salle = await prisma.salle.create({
+  const salle = await prisma.salles.create({
     data: {
       numero: data.numero,
       nbPlaces: data.nbPlaces,
       collegeId: data.collegeId,
+      departementId: data.departementId || null,
     },
     include: {
       college: {
+        select: { id: true, nom: true },
+      },
+      departement: {
         select: { id: true, nom: true },
       },
     },
@@ -257,11 +307,13 @@ export async function createSalle(
     numero: salle.numero,
     nbPlaces: salle.nbPlaces,
     collegeId: salle.collegeId,
+    departementId: salle.departementId,
   });
 
   logger.info(`Classroom created: ${salle.numero}`, {
     salleId: salle.id,
     collegeId: salle.collegeId,
+    departementId: salle.departementId,
     userId,
   });
 
@@ -276,13 +328,14 @@ export async function updateSalle(
   data: {
     numero?: string;
     nbPlaces?: number;
+    departementId?: string | null;
   },
   userId: string,
   userRole: string
 ) {
   logger.debug('Updating classroom', { id, userId, userRole });
 
-  const salle = await prisma.salle.findUnique({
+  const salle = await prisma.salles.findUnique({
     where: { id },
     select: { id: true, collegeId: true, numero: true },
   });
@@ -291,9 +344,40 @@ export async function updateSalle(
     throw new NotFoundError('Salle introuvable');
   }
 
+  // Verify department exists and belongs to the college if provided
+  if (data.departementId !== undefined && data.departementId !== null) {
+    const departement = await prisma.departements.findUnique({
+      where: { id: data.departementId },
+      select: { id: true, collegeId: true, nom: true },
+    });
+
+    if (!departement) {
+      throw new NotFoundError('Département introuvable');
+    }
+
+    if (departement.collegeId !== salle.collegeId) {
+      throw new BadRequestError('Le département ne fait pas partie de ce collège');
+    }
+
+    // Check that no OTHER salle exists for this department (1-to-1 constraint)
+    const existingSalle = await prisma.salles.findFirst({
+      where: {
+        departementId: data.departementId,
+        id: { not: id }, // Exclude the current salle being updated
+      },
+      select: { id: true, numero: true },
+    });
+
+    if (existingSalle) {
+      throw new ConflictError(
+        `Le département "${departement.nom}" a déjà une salle (Salle ${existingSalle.numero}). Un département ne peut avoir qu'une seule salle.`
+      );
+    }
+  }
+
   // Check access for ADMIN_COLLEGE
   if (userRole === 'ADMIN_COLLEGE') {
-    const adminCollege = await prisma.adminCollege.findUnique({
+    const adminCollege = await prisma.admin_colleges.findUnique({
       where: { userId },
       select: { collegeId: true },
     });
@@ -306,7 +390,7 @@ export async function updateSalle(
 
   // Check for duplicate numero if numero is being updated
   if (data.numero && data.numero !== salle.numero) {
-    const existingSalle = await prisma.salle.findFirst({
+    const existingSalle = await prisma.salles.findFirst({
       where: {
         numero: data.numero,
         collegeId: salle.collegeId,
@@ -323,14 +407,18 @@ export async function updateSalle(
     }
   }
 
-  const updated = await prisma.salle.update({
+  const updated = await prisma.salles.update({
     where: { id },
     data: {
       numero: data.numero,
       nbPlaces: data.nbPlaces,
+      departementId: data.departementId !== undefined ? data.departementId : undefined,
     },
     include: {
       college: {
+        select: { id: true, nom: true },
+      },
+      departement: {
         select: { id: true, nom: true },
       },
     },
@@ -359,12 +447,13 @@ export async function deleteSalle(
 ) {
   logger.debug('Deleting classroom', { id, userId, userRole });
 
-  const salle = await prisma.salle.findUnique({
+  const salle = await prisma.salles.findUnique({
     where: { id },
     include: {
       _count: {
         select: {
           matieres: true,
+          inscriptions: true,
         },
       },
     },
@@ -376,7 +465,7 @@ export async function deleteSalle(
 
   // Check access for ADMIN_COLLEGE
   if (userRole === 'ADMIN_COLLEGE') {
-    const adminCollege = await prisma.adminCollege.findUnique({
+    const adminCollege = await prisma.admin_colleges.findUnique({
       where: { userId },
       select: { collegeId: true },
     });
@@ -398,7 +487,18 @@ export async function deleteSalle(
     );
   }
 
-  await prisma.salle.delete({
+  // Check for associated inscriptions
+  if (salle._count.inscriptions > 0) {
+    logger.warn('Cannot delete classroom with inscriptions', {
+      id,
+      inscriptionCount: salle._count.inscriptions,
+    });
+    throw new BadRequestError(
+      `Impossible de supprimer: ${salle._count.inscriptions} inscription(s) associée(s)`
+    );
+  }
+
+  await prisma.salles.delete({
     where: { id },
   });
 
